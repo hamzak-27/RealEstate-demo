@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import SearchBar from './SearchBar';
+import { properties } from './data/properties';
 
 const PropertyTableWithSearch = () => {
   const [processedData, setProcessedData] = useState([]);
@@ -11,54 +12,29 @@ const PropertyTableWithSearch = () => {
 
   // Load and process property data
   useEffect(() => {
-    const loadPropertyData = async () => {
+    const loadPropertyData = () => {
       setLoading(true);
+      
       try {
-        console.log('Attempting to fetch /properties.json from:', window.location.origin + '/properties.json');
-        const response = await fetch('/properties.json', {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-          },
-        });
+        console.log('Loading property data from imported module...');
         
-        console.log('Fetch response:', {
-          ok: response.ok,
-          status: response.status,
-          statusText: response.statusText,
-          url: response.url
-        });
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}`);
-        }
-        
-        const jsonData = await response.json();
-        
-        console.log('Successfully loaded property data:', {
-          dataType: typeof jsonData,
-          isArray: Array.isArray(jsonData),
-          length: jsonData?.length || 'N/A',
-          firstItem: jsonData?.[0] || 'N/A'
-        });
-        
-        if (Array.isArray(jsonData) && jsonData.length > 0) {
-          setProcessedData(jsonData);
-          setFilteredData(jsonData);
+        if (Array.isArray(properties) && properties.length > 0) {
+          console.log('Successfully loaded property data:', {
+            dataType: typeof properties,
+            isArray: Array.isArray(properties),
+            length: properties.length,
+            firstItem: properties[0]
+          });
+          
+          setProcessedData(properties);
+          setFilteredData(properties);
           setUsingFallbackData(false);
           setLoading(false);
-          return; // Success - exit early
         } else {
-          throw new Error('Data is not a valid array or is empty');
+          throw new Error('Imported properties data is not a valid array or is empty');
         }
       } catch (error) {
         console.error('Error loading property data:', error);
-        console.error('Error details:', {
-          message: error.message,
-          name: error.name,
-          stack: error.stack
-        });
         
         // Fallback sample data for demonstration
         const sampleData = [
