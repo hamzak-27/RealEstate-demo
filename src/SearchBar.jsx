@@ -21,23 +21,35 @@ const SearchBar = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredData, setFilteredData] = useState(data);
 
-  // Filter function that searches across all visible table columns
+  // Enhanced filter function that supports multi-term search
   const filterData = useCallback((searchValue) => {
     if (!searchValue.trim()) {
       return data;
     }
 
-    const searchLower = searchValue.toLowerCase().trim();
+    // Split search terms by comma, space, or both, and clean up
+    const searchTerms = searchValue
+      .toLowerCase()
+      .split(/[,\s]+/) // Split by comma and/or whitespace
+      .map(term => term.trim())
+      .filter(term => term.length > 0); // Remove empty terms
+    
+    if (searchTerms.length === 0) {
+      return data;
+    }
     
     return data.filter(row => {
-      // Search across all fields defined in fieldLabels
-      return Object.entries(fieldLabels).some(([fieldKey, fieldLabel]) => {
-        const fieldValue = row[fieldKey];
-        if (fieldValue === null || fieldValue === undefined) return false;
-        
-        // Convert to string and perform case-insensitive search
-        const valueString = String(fieldValue).toLowerCase();
-        return valueString.includes(searchLower);
+      // For each search term, check if it matches any field in the row
+      return searchTerms.every(searchTerm => {
+        // Each search term must match at least one field
+        return Object.entries(fieldLabels).some(([fieldKey, fieldLabel]) => {
+          const fieldValue = row[fieldKey];
+          if (fieldValue === null || fieldValue === undefined) return false;
+          
+          // Convert to string and perform case-insensitive search
+          const valueString = String(fieldValue).toLowerCase();
+          return valueString.includes(searchTerm);
+        });
       });
     });
   }, [data, fieldLabels]);
@@ -104,7 +116,7 @@ const SearchBar = ({
             type="text"
             value={searchTerm}
             onChange={handleSearchChange}
-            placeholder="Search across all property details..."
+            placeholder="Search multiple terms: e.g., 'SV road, 2 bhk, gym'"
             className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-gray-900 placeholder-gray-500"
           />
           
@@ -158,11 +170,15 @@ const SearchBar = ({
           {isFiltered && (
             <div className="flex items-center space-x-2">
               <span className="text-xs text-gray-500">
-                Searching for: 
+                Terms: 
               </span>
-              <span className="text-xs font-medium text-gray-700 bg-gray-100 px-2 py-1 rounded">
-                "{searchTerm}"
-              </span>
+              <div className="flex flex-wrap gap-1">
+                {searchTerm.toLowerCase().split(/[,\s]+/).map(term => term.trim()).filter(term => term.length > 0).map((term, index) => (
+                  <span key={index} className="text-xs font-medium text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                    {term}
+                  </span>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -190,19 +206,25 @@ const SearchBar = ({
 
         {/* Search Tips */}
         {!isFiltered && (
-          <div className="mt-3 text-xs text-gray-500">
+          <div className="mt-3 text-xs text-gray-500 space-y-2">
             <div className="flex flex-wrap gap-2">
-              <span>💡 Search by:</span>
+              <span>🔍 <strong>Multi-term search:</strong> Use spaces or commas to search multiple criteria</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <span>✨ <strong>Examples:</strong></span>
+              <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-200">"JP Road, 2bhk"</span>
+              <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-200">"gym, RTMI, 3bhk"</span>
+              <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-200">"Lokhandwala amenities"</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <span>💡 <strong>Search fields:</strong></span>
               <span className="bg-gray-100 px-2 py-0.5 rounded">Area</span>
               <span className="bg-gray-100 px-2 py-0.5 rounded">Status</span>
               <span className="bg-gray-100 px-2 py-0.5 rounded">Project Name</span>
               <span className="bg-gray-100 px-2 py-0.5 rounded">Configuration</span>
-              <span className="bg-gray-100 px-2 py-0.5 rounded">Carpet</span>
-              <span className="bg-gray-100 px-2 py-0.5 rounded">Pricing</span>
-              <span className="bg-gray-100 px-2 py-0.5 rounded">Elevation</span>
-              <span className="bg-gray-100 px-2 py-0.5 rounded">Flats/Lifts</span>
               <span className="bg-gray-100 px-2 py-0.5 rounded">Amenities</span>
-              <span className="bg-gray-100 px-2 py-0.5 rounded">Possession</span>
+              <span className="bg-gray-100 px-2 py-0.5 rounded">Pricing</span>
+              <span className="bg-gray-100 px-2 py-0.5 rounded">+ more</span>
             </div>
           </div>
         )}
