@@ -6,6 +6,7 @@ const PropertyTableWithSearch = () => {
   const [filteredData, setFilteredData] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [usingFallbackData, setUsingFallbackData] = useState(false);
   const recordsPerPage = 10;
 
   // Load and process property data
@@ -13,21 +14,51 @@ const PropertyTableWithSearch = () => {
     const loadPropertyData = async () => {
       setLoading(true);
       try {
-        console.log('Attempting to fetch /properties.json');
-        const response = await fetch('/properties.json');
+        console.log('Attempting to fetch /properties.json from:', window.location.origin + '/properties.json');
+        const response = await fetch('/properties.json', {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        console.log('Fetch response:', {
+          ok: response.ok,
+          status: response.status,
+          statusText: response.statusText,
+          url: response.url
+        });
         
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+          throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}`);
         }
         
         const jsonData = await response.json();
         
-        console.log('Successfully loaded property data:', jsonData.length, 'records');
-        setProcessedData(jsonData);
-        setFilteredData(jsonData);
-        setLoading(false);
+        console.log('Successfully loaded property data:', {
+          dataType: typeof jsonData,
+          isArray: Array.isArray(jsonData),
+          length: jsonData?.length || 'N/A',
+          firstItem: jsonData?.[0] || 'N/A'
+        });
+        
+        if (Array.isArray(jsonData) && jsonData.length > 0) {
+          setProcessedData(jsonData);
+          setFilteredData(jsonData);
+          setUsingFallbackData(false);
+          setLoading(false);
+          return; // Success - exit early
+        } else {
+          throw new Error('Data is not a valid array or is empty');
+        }
       } catch (error) {
         console.error('Error loading property data:', error);
+        console.error('Error details:', {
+          message: error.message,
+          name: error.name,
+          stack: error.stack
+        });
         
         // Fallback sample data for demonstration
         const sampleData = [
@@ -70,6 +101,7 @@ const PropertyTableWithSearch = () => {
         ];
         
         console.log('Using fallback sample data:', sampleData);
+        setUsingFallbackData(true);
         setProcessedData(sampleData);
         setFilteredData(sampleData);
         setLoading(false);
@@ -145,9 +177,31 @@ const PropertyTableWithSearch = () => {
           <p className="mt-2 text-gray-600">
             Search and browse real estate listings in Andheri West
           </p>
+          
+          {/* Warning for fallback data */}
+          {usingFallbackData && (
+            <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-yellow-800">
+                    Using Sample Data
+                  </h3>
+                  <div className="mt-2 text-sm text-yellow-700">
+                    <p>Unable to load full property database. Showing limited sample data. Check browser console for details.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
           {/* Debug info */}
           <p className="text-sm text-gray-500 mt-1">
-            Loaded {processedData.length} properties
+            Loaded {processedData.length} properties {usingFallbackData ? '(sample data)' : ''}
           </p>
         </div>
 
