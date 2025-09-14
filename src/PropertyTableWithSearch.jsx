@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import SearchBar from './SearchBar';
 
 const PropertyTableWithSearch = () => {
-  const [rawData, setRawData] = useState([]);
   const [processedData, setProcessedData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -24,7 +23,6 @@ const PropertyTableWithSearch = () => {
         const jsonData = await response.json();
         
         console.log('Successfully loaded property data:', jsonData.length, 'records');
-        setRawData(jsonData);
         setProcessedData(jsonData);
         setFilteredData(jsonData);
         setLoading(false);

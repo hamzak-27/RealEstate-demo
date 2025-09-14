@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
 const SearchBar = ({ 
@@ -22,7 +22,7 @@ const SearchBar = ({
   const [filteredData, setFilteredData] = useState(data);
 
   // Filter function that searches across all visible table columns
-  const filterData = (searchValue) => {
+  const filterData = useCallback((searchValue) => {
     if (!searchValue.trim()) {
       return data;
     }
@@ -40,7 +40,7 @@ const SearchBar = ({
         return valueString.includes(searchLower);
       });
     });
-  };
+  }, [data, fieldLabels]);
 
   // Handle search input change with real-time filtering
   const handleSearchChange = (e) => {
@@ -81,7 +81,7 @@ const SearchBar = ({
     if (onFilteredDataChange) {
       onFilteredDataChange(filtered);
     }
-  }, [data]);
+  }, [filterData, searchTerm, onFilteredDataChange]);
 
   // Determine if we're in filtered state
   const isFiltered = searchTerm.trim() !== '';
