@@ -112,29 +112,6 @@ const PropertyTableWithSearch = () => {
     setCurrentPage(1);
   };
   
-  // Ensure currentPage doesn't exceed totalPages when filteredData changes (only when using pagination)
-  useEffect(() => {
-    if (shouldUsePagination) {
-      const totalPages = Math.ceil(filteredData.length / recordsPerPage);
-      const shouldReset = currentPage > totalPages && totalPages > 0;
-      
-      console.log('🔄 Pagination Boundary Check:', {
-        filteredDataLength: filteredData.length,
-        currentPage,
-        totalPages,
-        recordsPerPage,
-        shouldReset,
-        reason: shouldReset ? 'currentPage > totalPages' : 'within bounds'
-      });
-      
-      if (shouldReset) {
-        console.log('⚠️ Resetting page from', currentPage, 'to 1');
-        setCurrentPage(1);
-      }
-    }
-  }, [shouldUsePagination, filteredData.length, currentPage, recordsPerPage]);
-
-  // Calculate pagination with conditional logic - no pagination when searching
   const shouldUsePagination = !isSearching;
   const totalPages = shouldUsePagination ? Math.max(1, Math.ceil(filteredData.length / recordsPerPage)) : 1;
   
@@ -163,6 +140,28 @@ const PropertyTableWithSearch = () => {
     showingAllResults: !shouldUsePagination
   });
   
+  // Ensure currentPage doesn't exceed totalPages when filteredData changes (only when using pagination)
+  useEffect(() => {
+    if (shouldUsePagination) {
+      const totalPages = Math.ceil(filteredData.length / recordsPerPage);
+      const shouldReset = currentPage > totalPages && totalPages > 0;
+      
+      console.log('🔄 Pagination Boundary Check:', {
+        filteredDataLength: filteredData.length,
+        currentPage,
+        totalPages,
+        recordsPerPage,
+        shouldReset,
+        reason: shouldReset ? 'currentPage > totalPages' : 'within bounds'
+      });
+      
+      if (shouldReset) {
+        console.log('⚠️ Resetting page from', currentPage, 'to 1');
+        setCurrentPage(1);
+      }
+    }
+  }, [shouldUsePagination, filteredData.length, currentPage, recordsPerPage]);
+  
   // Auto-correct the page if it's invalid (only when not searching)
   useEffect(() => {
     if (shouldUsePagination && currentPage !== validCurrentPage && filteredData.length > 0) {
@@ -185,18 +184,6 @@ const PropertyTableWithSearch = () => {
     }
   };
 
-  const getStatusText = (status) => {
-    switch (status?.toUpperCase()) {
-      case 'RTMI':
-        return 'Ready to Move In';
-      case 'UC':
-        return 'Under Construction';
-      case 'NP':
-        return 'Nearing Possession';
-      default:
-        return status || 'N/A';
-    }
-  };
 
   if (loading) {
     return (
