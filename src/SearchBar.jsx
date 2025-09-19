@@ -99,9 +99,16 @@ const SearchBar = ({
     const filtered = filterData(newSearchTerm);
     setFilteredData(filtered);
     
-    // Pass filtered data to parent component
+    console.log('🔍 SearchBar Filter:', {
+      searchTerm: newSearchTerm,
+      originalDataLength: data.length,
+      filteredDataLength: filtered.length,
+      removedItems: data.length - filtered.length
+    });
+    
+    // Pass filtered data and search term to parent component
     if (onFilteredDataChange) {
-      onFilteredDataChange(filtered);
+      onFilteredDataChange(filtered, newSearchTerm);
     }
   };
 
@@ -111,7 +118,7 @@ const SearchBar = ({
     setFilteredData(data);
     
     if (onFilteredDataChange) {
-      onFilteredDataChange(data);
+      onFilteredDataChange(data, ''); // Pass empty search term
     }
   };
 
@@ -128,7 +135,7 @@ const SearchBar = ({
     setFilteredData(filtered);
     
     if (onFilteredDataChange) {
-      onFilteredDataChange(filtered);
+      onFilteredDataChange(filtered, searchTerm);
     }
   }, [filterData, searchTerm, onFilteredDataChange]);
 

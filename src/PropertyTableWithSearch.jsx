@@ -8,7 +8,8 @@ const PropertyTableWithSearch = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [usingFallbackData, setUsingFallbackData] = useState(false);
-  const recordsPerPage = 10;
+  const [isSearching, setIsSearching] = useState(false);
+  const recordsPerPage = 30;
 
   // Load and process property data
   useEffect(() => {
@@ -88,8 +89,21 @@ const PropertyTableWithSearch = () => {
   }, []);
 
   // Handle filtered data change from SearchBar
-  const handleFilteredDataChange = (filtered) => {
+  const handleFilteredDataChange = (filtered, searchTerm = '') => {
+    const isCurrentlySearching = searchTerm.trim() !== '';
+    
+    console.log('📊 Filter Change:', {
+      previousDataLength: filteredData.length,
+      newDataLength: filtered.length,
+      previousCurrentPage: currentPage,
+      willResetToPage: 1,
+      searchTerm,
+      isSearching: isCurrentlySearching,
+      willUsePagination: !isCurrentlySearching
+    });
+    
     setFilteredData(filtered);
+    setIsSearching(isCurrentlySearching);
     setCurrentPage(1); // Reset pagination when data changes
   };
 
@@ -98,19 +112,64 @@ const PropertyTableWithSearch = () => {
     setCurrentPage(1);
   };
   
-  // Ensure currentPage doesn't exceed totalPages when filteredData changes
+  // Ensure currentPage doesn't exceed totalPages when filteredData changes (only when using pagination)
   useEffect(() => {
-    const totalPages = Math.ceil(filteredData.length / recordsPerPage);
-    if (currentPage > totalPages && totalPages > 0) {
-      setCurrentPage(1);
+    if (shouldUsePagination) {
+      const totalPages = Math.ceil(filteredData.length / recordsPerPage);
+      const shouldReset = currentPage > totalPages && totalPages > 0;
+      
+      console.log('🔄 Pagination Boundary Check:', {
+        filteredDataLength: filteredData.length,
+        currentPage,
+        totalPages,
+        recordsPerPage,
+        shouldReset,
+        reason: shouldReset ? 'currentPage > totalPages' : 'within bounds'
+      });
+      
+      if (shouldReset) {
+        console.log('⚠️ Resetting page from', currentPage, 'to 1');
+        setCurrentPage(1);
+      }
     }
-  }, [filteredData.length, currentPage, recordsPerPage]);
+  }, [shouldUsePagination, filteredData.length, currentPage, recordsPerPage]);
 
-  // Calculate pagination
-  const totalPages = Math.ceil(filteredData.length / recordsPerPage);
-  const startIndex = (currentPage - 1) * recordsPerPage;
-  const endIndex = startIndex + recordsPerPage;
+  // Calculate pagination with conditional logic - no pagination when searching
+  const shouldUsePagination = !isSearching;
+  const totalPages = shouldUsePagination ? Math.max(1, Math.ceil(filteredData.length / recordsPerPage)) : 1;
+  
+  // Validate and correct currentPage if needed
+  const validCurrentPage = filteredData.length === 0 ? 1 : Math.max(1, Math.min(currentPage, totalPages));
+  
+  // When searching, show all results; when not searching, use pagination
+  const startIndex = shouldUsePagination ? (validCurrentPage - 1) * recordsPerPage : 0;
+  const endIndex = shouldUsePagination ? startIndex + recordsPerPage : filteredData.length;
   const currentRecords = filteredData.slice(startIndex, endIndex);
+  
+  // Debug logging for pagination
+  console.log('🔍 Pagination Debug:', {
+    isSearching,
+    shouldUsePagination,
+    originalCurrentPage: currentPage,
+    validCurrentPage,
+    totalPages,
+    filteredDataLength: filteredData.length,
+    recordsPerPage,
+    startIndex,
+    endIndex,
+    currentRecordsLength: currentRecords.length,
+    isValidPage: validCurrentPage >= 1 && validCurrentPage <= totalPages,
+    pageWasCorrected: currentPage !== validCurrentPage,
+    showingAllResults: !shouldUsePagination
+  });
+  
+  // Auto-correct the page if it's invalid (only when not searching)
+  useEffect(() => {
+    if (shouldUsePagination && currentPage !== validCurrentPage && filteredData.length > 0) {
+      console.log('⚠️ Auto-correcting page from', currentPage, 'to', validCurrentPage);
+      setCurrentPage(validCurrentPage);
+    }
+  }, [shouldUsePagination, currentPage, validCurrentPage, filteredData.length]);
 
   // Status color mapping
   const getStatusColor = (status) => {
@@ -196,6 +255,24 @@ const PropertyTableWithSearch = () => {
           onPaginationReset={handlePaginationReset}
         />
 
+        {/* Search Results Info Banner */}
+        {isSearching && filteredData.length > recordsPerPage && (
+          <div className="mb-4 bg-green-50 border border-green-200 rounded-md p-3">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-green-800">
+                  <span className="font-medium">Showing all {filteredData.length} search results</span> - Pagination is disabled during search for better viewing experience.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+        
         {/* Results Table */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
@@ -247,7 +324,7 @@ const PropertyTableWithSearch = () => {
                         {/* Status */}
                         <td className="px-3 py-3 whitespace-nowrap">
                           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(row.status)}`}>
-                            {getStatusText(row.status)}
+                            {row.status || 'N/A'}
                           </span>
                         </td>
                         
@@ -313,21 +390,29 @@ const PropertyTableWithSearch = () => {
             </div>
           </div>
 
-          {/* Pagination */}
-          {totalPages > 1 && (
+          {/* Pagination - only show when not searching */}
+          {shouldUsePagination && totalPages > 1 && (
             <div className="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
               <div className="flex items-center justify-between">
                 <div className="flex-1 flex justify-between sm:hidden">
                   <button
-                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                    disabled={currentPage === 1}
+                    onClick={() => {
+                      const newPage = Math.max(1, currentPage - 1);
+                      console.log('📱 Previous Button:', { currentPage, newPage, totalPages });
+                      setCurrentPage(newPage);
+                    }}
+                    disabled={validCurrentPage === 1}
                     className="relative inline-flex items-center px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Previous
                   </button>
                   <button
-                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                    disabled={currentPage === totalPages}
+                    onClick={() => {
+                      const newPage = Math.min(totalPages, currentPage + 1);
+                      console.log('📱 Next Button:', { currentPage, newPage, totalPages, canGoNext: currentPage < totalPages });
+                      setCurrentPage(newPage);
+                    }}
+                    disabled={validCurrentPage === totalPages || totalPages === 0}
                     className="ml-3 relative inline-flex items-center px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Next
@@ -336,16 +421,30 @@ const PropertyTableWithSearch = () => {
                 <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
                   <div>
                     <p className="text-sm text-gray-700">
-                      Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
-                      <span className="font-medium">{Math.min(endIndex, filteredData.length)}</span> of{' '}
-                      <span className="font-medium">{filteredData.length}</span> results
+                      {isSearching ? (
+                        <>
+                          Showing all <span className="font-medium">{filteredData.length}</span> search results
+                          <span className="text-xs text-green-600 ml-2 font-medium">(No pagination during search)</span>
+                        </>
+                      ) : (
+                        <>
+                          Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
+                          <span className="font-medium">{Math.min(endIndex, filteredData.length)}</span> of{' '}
+                          <span className="font-medium">{filteredData.length}</span> properties
+                          <span className="text-xs text-gray-500 ml-2">(Page {validCurrentPage} of {totalPages})</span>
+                        </>
+                      )}
                     </p>
                   </div>
                   <div>
                     <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
                       <button
-                        onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                        disabled={currentPage === 1}
+                        onClick={() => {
+                          const newPage = Math.max(1, currentPage - 1);
+                          console.log('🔙 Desktop Previous:', { currentPage, newPage, totalPages });
+                          setCurrentPage(newPage);
+                        }}
+                        disabled={validCurrentPage === 1}
                         className="relative inline-flex items-center px-2 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-l-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Previous
@@ -356,7 +455,7 @@ const PropertyTableWithSearch = () => {
                         const maxVisiblePages = 5;
                         const halfVisible = Math.floor(maxVisiblePages / 2);
                         
-                        let startPage = Math.max(1, currentPage - halfVisible);
+                        let startPage = Math.max(1, validCurrentPage - halfVisible);
                         let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
                         
                         // Adjust startPage if we're near the end
@@ -370,11 +469,19 @@ const PropertyTableWithSearch = () => {
                         }
                         
                         return pageNumbers.map(pageNum => {
-                          const isCurrentPage = currentPage === pageNum;
+                          const isCurrentPage = validCurrentPage === pageNum;
                           return (
                             <button
                               key={pageNum}
-                              onClick={() => setCurrentPage(pageNum)}
+                              onClick={() => {
+                                console.log('🔢 Page Number Click:', { 
+                                  clickedPage: pageNum, 
+                                  currentPage, 
+                                  totalPages,
+                                  filteredDataLength: filteredData.length 
+                                });
+                                setCurrentPage(pageNum);
+                              }}
                               className={`relative inline-flex items-center px-4 py-2 text-sm font-medium border ${
                                 isCurrentPage
                                   ? 'bg-blue-50 border-blue-500 text-blue-600'
@@ -388,9 +495,9 @@ const PropertyTableWithSearch = () => {
                       })()} 
                       
                       {/* Show ellipsis and last page if needed */}
-                      {totalPages > 5 && currentPage < totalPages - 2 && (
+                      {totalPages > 5 && validCurrentPage < totalPages - 2 && (
                         <>
-                          {currentPage < totalPages - 3 && (
+                          {validCurrentPage < totalPages - 3 && (
                             <span className="relative inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300">
                               ...
                             </span>
@@ -405,8 +512,18 @@ const PropertyTableWithSearch = () => {
                       )}
                       
                       <button
-                        onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                        disabled={currentPage === totalPages}
+                        onClick={() => {
+                          const newPage = Math.min(totalPages, currentPage + 1);
+                          console.log('🔜 Desktop Next:', { 
+                            currentPage, 
+                            newPage, 
+                            totalPages, 
+                            canGoNext: currentPage < totalPages,
+                            filteredDataLength: filteredData.length 
+                          });
+                          setCurrentPage(newPage);
+                        }}
+                        disabled={validCurrentPage === totalPages || totalPages === 0}
                         className="relative inline-flex items-center px-2 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-r-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Next
