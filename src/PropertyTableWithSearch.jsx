@@ -90,13 +90,21 @@ const PropertyTableWithSearch = () => {
   // Handle filtered data change from SearchBar
   const handleFilteredDataChange = (filtered) => {
     setFilteredData(filtered);
-    setCurrentPage(1); // Reset pagination
+    setCurrentPage(1); // Reset pagination when data changes
   };
 
   // Handle pagination reset
   const handlePaginationReset = () => {
     setCurrentPage(1);
   };
+  
+  // Ensure currentPage doesn't exceed totalPages when filteredData changes
+  useEffect(() => {
+    const totalPages = Math.ceil(filteredData.length / recordsPerPage);
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(1);
+    }
+  }, [filteredData.length, currentPage, recordsPerPage]);
 
   // Calculate pagination
   const totalPages = Math.ceil(filteredData.length / recordsPerPage);
@@ -125,7 +133,7 @@ const PropertyTableWithSearch = () => {
       case 'UC':
         return 'Under Construction';
       case 'NP':
-        return 'New Project';
+        return 'Nearing Possession';
       default:
         return status || 'N/A';
     }
@@ -344,23 +352,57 @@ const PropertyTableWithSearch = () => {
                       </button>
                       
                       {/* Page numbers */}
-                      {[...Array(Math.min(5, totalPages))].map((_, i) => {
-                        const pageNum = i + 1;
-                        const isCurrentPage = currentPage === pageNum;
-                        return (
+                      {(() => {
+                        const maxVisiblePages = 5;
+                        const halfVisible = Math.floor(maxVisiblePages / 2);
+                        
+                        let startPage = Math.max(1, currentPage - halfVisible);
+                        let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+                        
+                        // Adjust startPage if we're near the end
+                        if (endPage - startPage < maxVisiblePages - 1) {
+                          startPage = Math.max(1, endPage - maxVisiblePages + 1);
+                        }
+                        
+                        const pageNumbers = [];
+                        for (let i = startPage; i <= endPage; i++) {
+                          pageNumbers.push(i);
+                        }
+                        
+                        return pageNumbers.map(pageNum => {
+                          const isCurrentPage = currentPage === pageNum;
+                          return (
+                            <button
+                              key={pageNum}
+                              onClick={() => setCurrentPage(pageNum)}
+                              className={`relative inline-flex items-center px-4 py-2 text-sm font-medium border ${
+                                isCurrentPage
+                                  ? 'bg-blue-50 border-blue-500 text-blue-600'
+                                  : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                              }`}
+                            >
+                              {pageNum}
+                            </button>
+                          );
+                        });
+                      })()} 
+                      
+                      {/* Show ellipsis and last page if needed */}
+                      {totalPages > 5 && currentPage < totalPages - 2 && (
+                        <>
+                          {currentPage < totalPages - 3 && (
+                            <span className="relative inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300">
+                              ...
+                            </span>
+                          )}
                           <button
-                            key={pageNum}
-                            onClick={() => setCurrentPage(pageNum)}
-                            className={`relative inline-flex items-center px-4 py-2 text-sm font-medium border ${
-                              isCurrentPage
-                                ? 'bg-blue-50 border-blue-500 text-blue-600'
-                                : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                            }`}
+                            onClick={() => setCurrentPage(totalPages)}
+                            className="relative inline-flex items-center px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 hover:bg-gray-50"
                           >
-                            {pageNum}
+                            {totalPages}
                           </button>
-                        );
-                      })}
+                        </>
+                      )}
                       
                       <button
                         onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}

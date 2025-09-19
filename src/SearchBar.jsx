@@ -21,7 +21,7 @@ const SearchBar = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredData, setFilteredData] = useState(data);
 
-  // Enhanced filter function that supports multi-term search
+  // Enhanced filter function that supports multi-term search and abbreviations
   const filterData = useCallback((searchValue) => {
     if (!searchValue.trim()) {
       return data;
@@ -38,21 +38,58 @@ const SearchBar = ({
       return data;
     }
     
+    // Status abbreviation mapping
+    const statusAbbreviations = {
+      'uc': ['under construction', 'uc'],
+      'rtmi': ['ready to move in', 'rtmi'],
+      'np': ['nearing possession', 'np']
+    };
+    
     return data.filter(row => {
       // For each search term, check if it matches any field in the row
       return searchTerms.every(searchTerm => {
-        // Each search term must match at least one field
-        return Object.entries(fieldLabels).some(([fieldKey, fieldLabel]) => {
-          const fieldValue = row[fieldKey];
-          if (fieldValue === null || fieldValue === undefined) return false;
-          
-          // Convert to string and perform case-insensitive search
-          const valueString = String(fieldValue).toLowerCase();
-          return valueString.includes(searchTerm);
+        // Check if the search term is a status abbreviation
+        const expandedTerms = statusAbbreviations[searchTerm] || [searchTerm];
+        
+        // Each search term (or its expanded forms) must match at least one field
+        return expandedTerms.some(term => {
+          return Object.entries(fieldLabels).some(([fieldKey, fieldLabel]) => {
+            const fieldValue = row[fieldKey];
+            if (fieldValue === null || fieldValue === undefined) return false;
+            
+            // Convert to string and perform case-insensitive search
+            const valueString = String(fieldValue).toLowerCase();
+            
+            // Special handling for status field to match both abbreviation and full text
+            if (fieldKey === 'status' && fieldValue) {
+              const statusUpper = String(fieldValue).toUpperCase();
+              const statusFull = getStatusText(statusUpper).toLowerCase();
+              
+              // Check if term matches abbreviation or full status text
+              return statusUpper.toLowerCase().includes(term) || 
+                     statusFull.includes(term);
+            }
+            
+            return valueString.includes(term);
+          });
         });
       });
     });
   }, [data, fieldLabels]);
+  
+  // Helper function to get full status text (matching the main component)
+  const getStatusText = (status) => {
+    switch (status?.toUpperCase()) {
+      case 'RTMI':
+        return 'Ready to Move In';
+      case 'UC':
+        return 'Under Construction';
+      case 'NP':
+        return 'Nearing Possession';
+      default:
+        return status || 'N/A';
+    }
+  };
 
   // Handle search input change with real-time filtering
   const handleSearchChange = (e) => {
@@ -213,8 +250,15 @@ const SearchBar = ({
             <div className="flex flex-wrap gap-2">
               <span>✨ <strong>Examples:</strong></span>
               <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-200">"JP Road, 2bhk"</span>
-              <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-200">"gym, RTMI, 3bhk"</span>
-              <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-200">"Lokhandwala amenities"</span>
+              <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-200">"uc, 3bhk"</span>
+              <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-200">"rtmi, gym"</span>
+              <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-200">"np, Lokhandwala"</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <span>🏷️ <strong>Status shortcuts:</strong></span>
+              <span className="bg-green-50 text-green-700 px-2 py-0.5 rounded border border-green-200">"uc" = Under Construction</span>
+              <span className="bg-green-50 text-green-700 px-2 py-0.5 rounded border border-green-200">"rtmi" = Ready to Move In</span>
+              <span className="bg-green-50 text-green-700 px-2 py-0.5 rounded border border-green-200">"np" = Nearing Possession</span>
             </div>
             <div className="flex flex-wrap gap-2">
               <span>💡 <strong>Search fields:</strong></span>
