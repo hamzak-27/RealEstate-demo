@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import SearchBar from './SearchBar';
 import { properties } from './data/properties';
 
@@ -89,28 +89,40 @@ const PropertyTableWithSearch = () => {
   }, []);
 
   // Handle filtered data change from SearchBar
-  const handleFilteredDataChange = (filtered, searchTerm = '') => {
+  const handleFilteredDataChange = useCallback((filtered, searchTerm = '') => {
     const isCurrentlySearching = searchTerm.trim() !== '';
+    const dataLengthChanged = filtered.length !== filteredData.length;
+    const shouldResetPage = isCurrentlySearching || dataLengthChanged;
     
     console.log('📊 Filter Change:', {
       previousDataLength: filteredData.length,
       newDataLength: filtered.length,
       previousCurrentPage: currentPage,
-      willResetToPage: 1,
       searchTerm,
       isSearching: isCurrentlySearching,
-      willUsePagination: !isCurrentlySearching
+      willUsePagination: !isCurrentlySearching,
+      shouldResetPage,
+      dataLengthChanged,
+      reason: shouldResetPage ? (isCurrentlySearching ? 'searching' : 'data changed') : 'no reset needed',
+      stackTrace: new Error().stack.split('\n').slice(1, 4) // Show where this was called from
     });
     
     setFilteredData(filtered);
     setIsSearching(isCurrentlySearching);
-    setCurrentPage(1); // Reset pagination when data changes
-  };
+    
+    // Only reset pagination if we're actually searching or if the data length changed
+    if (shouldResetPage) {
+      console.log('⚠️ Resetting currentPage to 1 because:', shouldResetPage ? (isCurrentlySearching ? 'user is searching' : 'data length changed') : 'unknown');
+      setCurrentPage(1);
+    } else {
+      console.log('✅ NOT resetting currentPage, staying on page:', currentPage);
+    }
+  }, [filteredData.length, currentPage]); // Only depend on filteredData.length and currentPage
 
   // Handle pagination reset
-  const handlePaginationReset = () => {
+  const handlePaginationReset = useCallback(() => {
     setCurrentPage(1);
-  };
+  }, []);
   
   const shouldUsePagination = !isSearching;
   const totalPages = shouldUsePagination ? Math.max(1, Math.ceil(filteredData.length / recordsPerPage)) : 1;

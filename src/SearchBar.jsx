@@ -63,7 +63,21 @@ const SearchBar = ({
             // Special handling for status field to match both abbreviation and full text
             if (fieldKey === 'status' && fieldValue) {
               const statusUpper = String(fieldValue).toUpperCase();
-              const statusFull = getStatusText(statusUpper).toLowerCase();
+              // Inline status mapping to avoid function dependency issues
+              let statusFull = '';
+              switch (statusUpper) {
+                case 'RTMI':
+                  statusFull = 'ready to move in';
+                  break;
+                case 'UC':
+                  statusFull = 'under construction';
+                  break;
+                case 'NP':
+                  statusFull = 'nearing possession';
+                  break;
+                default:
+                  statusFull = statusUpper.toLowerCase();
+              }
               
               // Check if term matches abbreviation or full status text
               return statusUpper.toLowerCase().includes(term) || 
@@ -77,19 +91,10 @@ const SearchBar = ({
     });
   }, [data, fieldLabels]);
   
-  // Helper function to get full status text (matching the main component)
-  const getStatusText = (status) => {
-    switch (status?.toUpperCase()) {
-      case 'RTMI':
-        return 'Ready to Move In';
-      case 'UC':
-        return 'Under Construction';
-      case 'NP':
-        return 'Nearing Possession';
-      default:
-        return status || 'N/A';
-    }
-  };
+  // Add debug logging for filterData changes
+  useEffect(() => {
+    console.log('🔄 FilterData function updated - this might cause pagination issues');
+  }, [filterData]);
 
   // Handle search input change with real-time filtering
   const handleSearchChange = (e) => {
@@ -137,7 +142,7 @@ const SearchBar = ({
     if (onFilteredDataChange) {
       onFilteredDataChange(filtered, searchTerm);
     }
-  }, [filterData, searchTerm, onFilteredDataChange]);
+  }, [filterData, searchTerm, onFilteredDataChange]); // Include onFilteredDataChange now that it's memoized
 
   // Determine if we're in filtered state
   const isFiltered = searchTerm.trim() !== '';
